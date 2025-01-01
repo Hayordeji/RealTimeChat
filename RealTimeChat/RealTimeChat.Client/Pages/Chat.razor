@@ -1,0 +1,31 @@
+﻿@page "/chat"
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager navigationManager
+@rendermode InteractiveWebAssembly
+
+<h3>Chat</h3>
+
+@code {
+	private HubConnection hubConnection;
+	private string userInput;
+	private string messageInput;
+	private List<string> messages;
+
+	public async Task OnInitializedAsync()
+	{
+		hubConnection = new HubConnectionBuilder()
+		.WithUrl(navigationManager.ToAbsoluteUri("/chathub"))
+		.Build();
+
+		hubConnection.On<string, string>("ReceiveMessage",(userInput,messageInput) =>
+		{
+			var encodedMessage = $"{userInput} : {messageInput}";
+			messages.Add(encodedMessage);
+			StateHasChanged();
+		});
+
+		Task Send() => hubConnection.SendAsync("SendMessage",userInput, messageInput);
+
+	}
+
+}
