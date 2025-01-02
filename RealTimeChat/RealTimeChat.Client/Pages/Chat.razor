@@ -25,20 +25,26 @@
 	private HubConnection hubConnection;
 	private string userInput;
 	private string messageInput;
-	private List<string> messages;
+	private List<string> messages = new List<string>();
 
-	public async Task OnInitializedAsync()
+	protected override async Task OnInitializedAsync()
 	{
 		hubConnection = new HubConnectionBuilder()
 		.WithUrl(navigationManager.ToAbsoluteUri("/chathub"))
 		.Build();
 
-		hubConnection.On<string, string>("ReceiveMessage",(userInput,messageInput) =>
+		hubConnection.On<string, string>("ReceiveMessage", async (user, message) =>
 		{
-			var encodedMessage = $"{userInput} : {messageInput}";
-			messages.Add(encodedMessage);
-			StateHasChanged();
+			var encodedMessage = $"{user} : {message}";
+			await InvokeAsync(() =>
+			{ 
+				messages.Add(encodedMessage);
+				StateHasChanged();
+			});
+		
 		});
+
+		await hubConnection.StartAsync();
 
 	}
 	Task Send() => hubConnection.SendAsync("SendMessage",userInput, messageInput);
