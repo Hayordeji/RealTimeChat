@@ -1,0 +1,123 @@
+﻿@page "/chatV2"
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager navigationManager
+@rendermode InteractiveWebAssembly
+
+<h3>Chat</h3>
+<div class="chat-container">
+    <div class="messages">
+        @foreach (var message in messages)
+        {
+            <div class="message">@message</div>
+        }
+    </div>
+    <div class="input-container">
+        <input type="text" placeholder="Type a message" @bind="messageInput" class="message-input" />
+        <button @onclick="Send" class="send-button">Send</button>
+    </div>
+</div>
+
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f0f2f5;
+        margin: 0;
+        padding: 0;
+    }
+
+    h3 {
+        text-align: center;
+        color: #333;
+    }
+
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        max-width: 600px;
+        margin: 0 auto;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 16px;
+        background-color: #ffffff;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .messages {
+        flex: 1;
+        overflow-y: auto;
+        margin-bottom: 16px;
+        padding: 8px;
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .message {
+        padding: 8px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #eee;
+        background-color: #e9ecef;
+        border-radius: 4px;
+        color: #333;
+    }
+
+    .input-container {
+        display: flex;
+        gap: 8px;
+    }
+
+    .user-input, .message-input {
+        flex: 1;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 16px;
+        background-color: #f0f2f5;
+    }
+
+    .send-button {
+        padding: 12px 24px;
+        border: none;
+        background-color: #007bff;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s ease;
+    }
+
+    .send-button:hover {
+        background-color: #0056b3;
+    }
+</style>
+
+@code {
+    private HubConnection hubConnection;
+    private string userInput;
+    private string messageInput;
+    private List<string> messages = new List<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(navigationManager.ToAbsoluteUri("/chathub"))
+            .Build();
+
+        hubConnection.On<string, string>("ReceiveMessage", async (user, message) =>
+        {
+            var encodedMessage = $"{user}: {message}";
+            await InvokeAsync(() =>
+            {
+                messages.Add(encodedMessage);
+                StateHasChanged();
+            });
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    Task Send() => hubConnection.SendAsync("SendMessage", userInput, messageInput);
+
+    public bool isConnected => hubConnection.State == HubConnectionState.Connected;
+}
